@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { JADAD_SYSTEM_PROMPT, JADAD_USER_PROMPT } from '@/lib/jadad-prompt';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { JADAD_USER_PROMPT } from '@/lib/jadad-prompt';
 import { JadadAnalysis } from '@/types/jadad';
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,50 +18,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Apenas arquivos PDF são aceitos.' }, { status: 400 });
     }
 
-    if (file.size > 32 * 1024 * 1024) {
-      return NextResponse.json({ error: 'O arquivo PDF não pode ultrapassar 32MB.' }, { status: 400 });
+    if (file.size > 20 * 1024 * 1024) {
+      return NextResponse.json({ error: 'O arquivo PDF não pode ultrapassar 20MB.' }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString('base64');
 
-    const response = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 4096,
-      system: JADAD_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: base64,
-              },
-            } as Anthropic.DocumentBlockParam,
-            {
-              type: 'text',
-              text: JADAD_USER_PROMPT,
-            },
-          ],
-        },
-      ],
-      stream: false,
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
+      },
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Resposta inesperada da API.');
-    }
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: base64,
+          mimeType: 'application/pdf',
+        },
+      },
+      JADAD_USER_PROMPT,
+    ]);
 
-    let raw = content.text.trim();
-    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenceMatch) raw = fenceMatch[1].trim();
+    const raw = result.response.text().trim();
 
     const analysis: JadadAnalysis = JSON.parse(raw);
 
+    // Ensure total score is never negative
     analysis.totalScore = Math.max(0, analysis.totalScore);
     analysis.quality = analysis.totalScore >= 3 ? 'high' : 'low';
     analysis.qualityLabel =

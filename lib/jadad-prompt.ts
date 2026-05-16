@@ -1,10 +1,4 @@
-export const JADAD_SYSTEM_PROMPT = `Você é um especialista em metodologia de pesquisa clínica, com profundo conhecimento na Escala de Jadad para avaliação da qualidade metodológica de ensaios clínicos randomizados (ECR).
-
-Sua tarefa é analisar artigos científicos e aplicar rigorosamente a Escala de Jadad, avaliando cada critério com base no conteúdo do artigo fornecido.
-
-Responda SEMPRE em português brasileiro e retorne EXCLUSIVAMENTE um JSON válido, sem texto adicional.`;
-
-export const JADAD_USER_PROMPT = `Analise este artigo científico aplicando a Escala de Jadad para avaliação da qualidade metodológica de ensaios clínicos randomizados.
+export const JADAD_USER_PROMPT = `Você é um especialista em metodologia de pesquisa clínica com profundo conhecimento na Escala de Jadad. Analise o artigo científico em PDF acima científico aplicando a Escala de Jadad para avaliação da qualidade metodológica de ensaios clínicos randomizados.
 
 ## ESCALA DE JADAD — CRITÉRIOS DE AVALIAÇÃO
 
